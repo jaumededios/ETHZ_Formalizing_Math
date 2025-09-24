@@ -26,7 +26,7 @@ section TacticsWarmup
 -- 1) `simp`, `simp?`, and `simpa`
 --    Great for cleaning goals built from `rfl`-ish lemmas and `[simp]` rules.
 example (x y : ℝ) : x + 0 + y = x + y := by
-  simpa [add_assoc]  -- `simp?` can suggest rules; `simpa` closes the goal.
+  simp [add_zero]  -- `simp?` can suggest rules; `simpa` closes the goal.
 
 -- 2) `rw` / `rw [← …]` — directed rewriting.
 example (x y : ℝ) (h : x = y) : x + x = y + y := by
@@ -68,8 +68,7 @@ example (f g : ℝ → ℝ) :
 example (a b : ℝ) (h : a = b) : b = a := by
   aesop
 
--- 10) `refine` / `have` / `simp` — shaping the goal and using rewriting smartly.
---     Pattern especially handy when building structures or using coercions.
+-- 10) `congrarg` — apply a function to both sides of an equality
 example (x y z : ℝ) (h : x = y) : (fun w : ℝ => w + z) x = y + z := by
   apply congrArg (fun t => t + z)
   simp [h]
@@ -124,8 +123,8 @@ variable (a b c : S)
 -- ### {Braced} parameters
 
 -- Example
-lemma sum_pos (a b : ℝ) (ha: 0<a) (hb: 0<b) :a+b>0 := by bound
-lemma sum_pos_braces {a b : ℝ} (ha: a>0) (hb: b>0) :a+b>0 := by bound
+lemma sum_pos (a b : ℝ) (ha : 0 < a) (hb : 0 < b) :a+b>0 := by bound
+lemma sum_pos_braces {a b : ℝ} (ha : a > 0) (hb : b > 0) :a+b>0 := by bound
 
 #check sum_pos 3 2 three_pos two_pos
 #check sum_pos_braces three_pos two_pos
@@ -152,12 +151,15 @@ lemma mul_nilpotent (a b : R) (hb : IsNilpotent b) :
 
 /-- Sum of nilpotents is nilpotent -/
 
-lemma overshoot_pow_zero {R:Type} [CommRing R] (r:R) (x y : ℕ) (ineq: y ≥ x) (nilp: r^x =0) : (r^y=0)
+lemma overshoot_pow_zero {R : Type}
+  [CommRing R] (r : R) (x y : ℕ)
+  (ineq : y ≥ x) (nilp : r ^ x = 0) : (r^y=0)
   := by
   calc
   r^y = r^(x+(y-x)):= by rw [Nat.add_sub_cancel' ineq]
   _   = r^x * r^(y-x) := by ring_nf
   _   = 0 := by rw[nilp,zero_mul]
+
 lemma nilpotent_add {a b : R} (ha : IsNilpotent a) (hb : IsNilpotent b) :
     IsNilpotent (a + b) := by
     unfold IsNilpotent
@@ -237,13 +239,13 @@ end Nilradical
 
 section Continuous
 
-variable {X Y Z T: Type}
+variable {X Y Z T : Type}
          [MetricSpace X] [MetricSpace Y]
          [MetricSpace Z] [MetricSpace T]
 
 
 #synth  MetricSpace (X × Y)
-variable (x1 x2:X)(y1 y2:Y)
+variable (x1 x2 : X) (y1 y2 : Y)
 #check dist (x1, y1) (x2, y2)
 
 def Continuous_at (x : X) (f : X → Y) : Prop :=

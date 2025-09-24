@@ -40,8 +40,8 @@ variable (a b c : S)
 -- ### {Braced} parameters
 
 -- Example
-lemma sum_pos        (a b : ℝ) (ha: 0<a) (hb: 0<b) :a+b>0 := by bound
-lemma sum_pos_braces {a b : ℝ} (ha: a>0) (hb: b>0) :a+b>0 := by bound
+lemma sum_pos        (a b : ℝ) (ha : 0 < a) (hb : 0 < b) :a+b>0 := by bound
+lemma sum_pos_braces {a b : ℝ} (ha : a > 0) (hb : b > 0) :a+b>0 := by bound
 
 #check sum_pos 3 2 three_pos two_pos
 #check sum_pos_braces three_pos two_pos
