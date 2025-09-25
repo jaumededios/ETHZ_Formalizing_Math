@@ -1,4 +1,10 @@
-import Mathlib
+import Mathlib.Data.Nat.Choose.Sum
+import Mathlib.Data.Real.Basic
+import Mathlib.Order.CompletePartialOrder
+import Mathlib.RingTheory.Ideal.Prime
+import Mathlib.RingTheory.Nilpotent.Defs
+import Mathlib.Analysis.RCLike.Basic
+import Mathlib.Tactic.Bound
 
 -- # The Nilradical
 
@@ -113,3 +119,5 @@ lemma primeIdeal_contains_IsNilpotent_mem
 theorem nilrad_subset_of_Prime
   {I : Ideal R} (hI : I.IsPrime) :
   nilrad R ≤ I := by sorry
+
+end Nilradical
