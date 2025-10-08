@@ -273,7 +273,6 @@ def NNR := Subtype ℝ (fun x ↦ (x≥ 0))
 /-
 # Structures
 
-Very often we want inductive types with a single constructor.
 Lean has an convenient way to do that
 
 -/
