@@ -125,13 +125,6 @@ theorem polarization_identity (x y : ℝ) : x * y = ((x + y) ^ 2 - (x - y) ^ 2) 
 
 def mul : ℝ × ℝ → ℝ := fun (y, z) ↦ y * z
 
-theorem Fpolarization :
-    mul = lin (1 / 4) ∘ R_sub ∘ (FProd (square ∘ R_add) (square ∘ R_sub) ∘ Diag) := by
-  unfold mul
-  funext v
-  simp [polarization_identity, Diag, FProd, R_add, R_sub, square, lin, Diag]
-  ring
-
 example (x : ℝ × ℝ) : Continuous_at x mul := by
   convert_to Continuous_at x (lin (1 / 4) ∘ R_sub ∘ FProd (square ∘ R_add) (square ∘ R_sub) ∘ Diag)
   · unfold mul
