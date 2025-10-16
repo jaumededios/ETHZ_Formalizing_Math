@@ -504,6 +504,31 @@ theorem divides_smaller {a b : ℕ} (h0 : b > 0) (hd : divides a b) : a ≤ b
 
 def isPrime (p : ℕ) : Prop := (p>1)∧(∀ x>1,divides x p → x=p)
 
+-- ## Interlude: Subtypes are an inductive type
+-- A subtype of x is all the elements of x that satisfy some property
+
+namespace Hidden
+
+inductive Subtype' (α : Type*) (p : α → Prop) where
+  | mk : (a:α) → (p a) → Subtype' α p
+
+def NNR' := Subtype ℝ (fun x ↦ (x≥ 0))
+
+#check (Subtype.mk 2  (by simp_all only [ge_iff_le, Nat.ofNat_nonneg]) : NNR)
+#check (⟨2, by simp_all only [ge_iff_le, Nat.ofNat_nonneg]⟩ : NNR)
+-- Proof extensionality is crucial here!
+
+end Hidden
+
+#check Subtype
+
+def P:= {n: ℕ// n>0}
+#check P
+
+#check (⟨1, by aesop⟩ : P)
+
+--- End interlude
+
 theorem not_prime_has_factors
   (n : ℕ) (h1 : n > 1) (hn : ¬ isPrime n) :
   ∃ m>1, divides m n ∧ m<n := by
@@ -694,7 +719,7 @@ namespace BinaryTree
 #eval Depth (node (node leaf (node leaf leaf)) leaf)
 
 
-def Isomorphic (t1 t2 : BinaryTree) : Bool :=
+def Isomorphic (t1 t2 : BinaryTree) : Prop :=
   match t1  with
   | leaf  => match t2 with
     | leaf => true
@@ -704,7 +729,7 @@ def Isomorphic (t1 t2 : BinaryTree) : Bool :=
     | node m1 m2 => (Isomorphic n1 m1)∧(Isomorphic n2 m2)∨
                     (Isomorphic n1 m2)∧(Isomorphic n2 m1)
 
-#eval Isomorphic (node (node leaf (node leaf leaf)) leaf)
+#reduce Isomorphic (node (node leaf (node leaf leaf)) leaf)
                  (node leaf (node leaf (node leaf leaf)))
 
 example (t1 t2 : BinaryTree) (HI : Isomorphic t1 t2) : Depth t1 = Depth t2 := by
@@ -732,6 +757,23 @@ example (t1 t2 : BinaryTree) (HI : Isomorphic t1 t2) : Depth t1 = Depth t2 := by
         unfold Depth
         rw [h1, h2]
         rw [Nat.max_comm]
+
+example (t1 t2 : BinaryTree) (HI : Isomorphic t1 t2) : Isomorphic t2 t1 := by
+  induction t1 generalizing t2
+  case leaf =>
+    cases t2
+    case leaf =>
+      tauto
+    case node t1 t2 => simp [Isomorphic] at  HI
+  case node =>
+    cases t2
+    case leaf => simp [Isomorphic] at HI
+    case node t1 t2 h1 h2 t3 t4 =>
+      simp [Isomorphic] at *
+      cases HI
+      case inl h => exact Or.inl ⟨h1 t3 h.1, h2 t4 h.2⟩
+      case inr h => exact Or.inr ⟨h2 t3 h.2, h1 t4 h.1⟩
+
 
 
 end BinaryTree
