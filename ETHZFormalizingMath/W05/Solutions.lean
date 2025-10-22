@@ -1,5 +1,6 @@
 import Mathlib.Data.Real.Basic
 import Mathlib.Data.Nat.Basic
+import Mathlib
 
 universe u
 
@@ -93,24 +94,24 @@ namespace Hidden
 -- Classes define "types with certain properties"
 
 
-structure AdditiveType (α : Type*) where
+structure HasAddition (α : Type*) where
   add : α → α → α
 
-def double {α : Type*} (s : AdditiveType α) (x : α) := s.add x x
+def double {α : Type*} (s : HasAddition α) (x : α) := s.add x x
 
-def PointAdd : AdditiveType (Point ℕ) where
+def PointsHaveAddition : HasAddition (Point ℕ) where
   add : (Point ℕ → Point ℕ → Point ℕ) :=
     fun a b ↦ {x:=a.x+b.x, y:= a.y+b.y : Point ℕ }
 
-#check PointAdd
+#check PointsHaveAddition
 
-#reduce double  (PointAdd) (Point.mk 1 2)
+#reduce double (PointsHaveAddition) (Point.mk 1 2)
 
 class AddType (α : Type*) where
   add : α → α → α
 
-instance Point_has_add : AddType (Point ℕ) where
-  add :=  PointAdd.add
+instance PointsHaveAddition' : AddType (Point ℕ) where
+  add :=  PointsHaveAddition.add
 
 def double' {α : Type*} [AddType α] (a : α) :α
   := AddType.add a a
@@ -120,11 +121,18 @@ def double' {α : Type*} [AddType α] (a : α) :α
 end Hidden
 
 
+-- ## Parametrized Instances
+
+def p1 : Point ℤ := ⟨1,-2⟩
 
 def Nat_Point_Add (a b : Point ℕ) : Point ℕ := ⟨a.x+b.x, a.y+b.y⟩
 
-instance AddPoint_from_Add(α : Type) [Add α] : Add (Point α) where add :=
+instance AddPoint_from_Add (α : Type) [Add α] : Add (Point α) where add :=
   fun a b ↦ ⟨a.x+b.x, a.y+b.y⟩
+
+#eval Add.add p1 p1
+#eval p1 + p1
+
 
 instance MulPoint_from_Mul (α : Type) [Mul α] : Mul (Point α) where mul :=
   fun a b ↦ ⟨a.x*b.x, a.y*b.y⟩
@@ -136,33 +144,102 @@ instance ZeroPoint_from_Mul (α : Type) [Zero α] :
 #check (inferInstance : Mul (Point ℝ))
 #synth Mul (Point ℝ)
 
-def p1 : Point ℤ := ⟨1,-2⟩
 
 #eval p1*0+p1*p1
 
+-- ## Parametrized instances already implemented
 
--- # Example: Building the integers
+-- What happens if we consider *tuples of points*?
 
-variable (n:ℕ) (z:ℤ)
+#check (p1,p1)+(p1,p1)
+
+#synth Add ((Point ℝ)×(Point ℝ))
+
+-- You can tell Lean "If A is add and B is add, A×B is add"
+instance Product_add (α : Type) (β : Type) [Add α] [Add β] : Add ((Point α)×(Point β))  where add :=
+  fun (a1,a2) (b1,b2) ↦ ⟨⟨a1.x+b1.x, a1.y+b1.y⟩,⟨a2.x+b2.x, a2.y+b2.y⟩⟩
+
+
+-- # The integers
+
+variable (n : ℕ) (z : ℤ)
 
 structure Integer where
   negative : Bool --
-  num : Nat
-  no_dupl : ¬(negative ∧ (num = 0)) -- We don't want 0  and -0
+  abs : Nat
+  no_dupl : ¬(negative ∧ (abs = 0)) -- We don't want 0  and -0
 
 instance : OfNat Integer n where
-  ofNat := { num := n, negative := False, no_dupl := by aesop }
+  ofNat := { abs := n, negative := False, no_dupl := by aesop }
 
 
 #eval (2 : Integer)
 
 instance : ToString Integer where
-  toString r := if r.negative then s!"-{r.num}"else s!"{r.num}"
+  toString r := if r.negative then s!"-{r.abs}"else s!"{r.abs}"
 
 
 #eval (2 : Integer)
+
 
 instance : Neg Integer where
   neg F :=  match F with
   | ⟨_,0,_⟩ => ⟨False, 0, by aesop⟩
   | ⟨s,a+1,_⟩ => ⟨!s, a+1, by simp⟩
+
+-- What tactic should I use?
+-- 1. If the proof is "very tedious application of logical rules", use grind
+-- 2. If the proof is transitivity + chaining of inequalities use gcongr
+-- 3. If it "should be obvious" but uses complicated lemas use aesop
+-- 4. If you want to bring things to a "normal form" use simp
+
+instance : PartialOrder Integer where
+  le x y := ((x.negative ∧ (¬ y.negative))∨
+            ((¬ x.negative) ∧ (¬ y.negative) ∧ (x.abs ≤ y.abs))∨
+            (x.negative ∧ y.negative ∧ (y.abs ≤ x.abs)))
+  le_antisymm := by
+                 intro ⟨s1,a1, p1⟩ ⟨s2, a2,p2⟩
+                 simp
+                 grind
+
+  le_refl := by
+              intro ⟨s,a,b⟩
+              simp
+  le_trans := by
+              intro ⟨s1,a1, p1⟩ ⟨s2, a2,p2⟩ ⟨s3, a3,p3⟩
+              simp
+              grind
+
+-- ## Should I use classes or records?
+
+#print Semigroup
+#print Semigroup'
+
+
+-- ## Dependency hyerarchies
+
+class Group' (A : Type) extends Semigroup A, Inv A where
+  e : A
+  left_e : ∀ (a:A), e*a = a
+  right_e : ∀ (a:A), a*e = a
+  inv_is_inv: ∀ a:A, a⁻¹*a = a
+
+-- ### Dependency Hyerarchies go deep:
+-- The whole hierarchy of Algebra, quite literally
+-- https://github.com/leanprover-community/mathlib4/blob/a19486351878a13e2737bf5a838468e244624787/Mathlib/Algebra/Ring/Defs.lean#L142-L143
+
+
+variable (R : Type*) [Ring R]
+
+def nilrad : Ideal R where
+  carrier := sorry
+  add_mem' := sorry
+  zero_mem' := sorry
+  smul_mem' := sorry
+
+-- ## Coercion
+-- There is a type class called Coe which records "Things that can be coerced into"
+instance (α : Type) : Coe (Point α) (α × α) where
+  coe a := (a.x, a.y)
+
+#check (Point.mk 2 2 : ℕ × ℕ)
