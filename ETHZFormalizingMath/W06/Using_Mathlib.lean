@@ -40,9 +40,8 @@ example (x : ℝ) : x.sqrt ^ 2 = x := by
 
 
 open scoped Real in
-example : Real.sqrt π ^ 2 = π := by
-  apply Real.sq_sqrt
-  exact? says exact Real.pi_nonneg
+example : Real.sqrt π ^ 2 = π := by sorry
+
 /-
 We can search for this with Loogle as well in the following ways:
 
@@ -77,6 +76,7 @@ We realize that Mathlib talks about `rank` and `finrank`, but not `dimension`.
 
 -- One attempted formalization, actually invalid unless we add that `V` is finite-dimensional
 -- Because `Module.finrank` takes the junk value `0` if `V` is not finite-dimensional.
+
 example {K V : Type*} [DivisionRing K] [AddCommGroup V] [Module K V]
     {ι : Type*} [Fintype ι] {b : ι → V} (h : Module.finrank K V < Fintype.card ι) :
     ¬ LinearIndependent K b :=
