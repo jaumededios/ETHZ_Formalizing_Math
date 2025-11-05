@@ -1,0 +1,87 @@
+import Mathlib.Topology.Instances.Real.Lemmas
+import Mathlib.Tactic
+
+open Set Filter Topology
+
+example {α : Type*} (s : Set α) : Filter α := sorry
+
+example : Filter ℕ := sorry
+
+def Tendsto₁ {X Y : Type*} (f : X → Y) (F : Filter X) (G : Filter Y) :=
+  ∀ V ∈ G, f ⁻¹' V ∈ F
+
+def Tendsto₂ {X Y : Type*} (f : X → Y) (F : Filter X) (G : Filter Y) :=
+  map f F ≤ G
+
+example {X Y : Type*} (f : X → Y) (F : Filter X) (G : Filter Y) :
+    Tendsto₂ f F G ↔ Tendsto₁ f F G :=
+  Iff.rfl
+
+#check (@Filter.map_mono : ∀ {α β} {m : α → β}, Monotone (map m))
+
+#check
+  (@Filter.map_map :
+    ∀ {α β γ} {f : Filter α} {m : α → β} {m' : β → γ}, map m' (map m f) = map (m' ∘ m) f)
+
+example {X Y Z : Type*} {F : Filter X} {G : Filter Y} {H : Filter Z} {f : X → Y} {g : Y → Z}
+    (hf : Tendsto₁ f F G) (hg : Tendsto₁ g G H) : Tendsto₁ (g ∘ f) F H :=
+  by sorry
+
+
+
+variable (f : ℝ → ℝ) (x₀ y₀ : ℝ)
+
+#check comap ((↑) : ℚ → ℝ) (𝓝 x₀)
+
+#check Tendsto (f ∘ (↑)) (comap ((↑) : ℚ → ℝ) (𝓝 x₀)) (𝓝 y₀)
+
+section
+variable {α β γ : Type*} (F : Filter α) {m : γ → β} {n : β → α}
+
+example (comap_comap : comap m (comap n F) = comap (n ∘ m) F) := by tauto
+
+end
+
+example : 𝓝 (x₀, y₀) = (𝓝 x₀) ×ˢ (𝓝 y₀) :=
+  nhds_prod_eq
+
+#check le_inf_iff
+
+
+example (u : ℕ → ℝ) (x₀ : ℝ) :
+    Tendsto u atTop (𝓝 x₀) ↔ ∀ ε > 0, ∃ N, ∀ n ≥ N, u n ∈ Ioo (x₀ - ε) (x₀ + ε) := by
+  have : atTop.HasBasis (fun _ : ℕ ↦ True) Ici := atTop_basis
+  rw [this.tendsto_iff (nhds_basis_Ioo_pos x₀)]
+  simp
+
+example (P Q : ℕ → Prop) (hP : ∀ᶠ n in atTop, P n) (hQ : ∀ᶠ n in atTop, Q n) :
+    ∀ᶠ n in atTop, P n ∧ Q n :=
+  hP.and hQ
+
+example (u v : ℕ → ℝ) (h : ∀ᶠ n in atTop, u n = v n) (x₀ : ℝ) :
+    Tendsto u atTop (𝓝 x₀) ↔ Tendsto v atTop (𝓝 x₀) :=
+  tendsto_congr' h
+
+example (u v : ℕ → ℝ) (h : u =ᶠ[atTop] v) (x₀ : ℝ) :
+    Tendsto u atTop (𝓝 x₀) ↔ Tendsto v atTop (𝓝 x₀) :=
+  tendsto_congr' h
+
+#check Eventually.of_forall
+#check Eventually.mono
+#check Eventually.and
+
+example (P Q R : ℕ → Prop) (hP : ∀ᶠ n in atTop, P n) (hQ : ∀ᶠ n in atTop, Q n)
+    (hR : ∀ᶠ n in atTop, P n ∧ Q n → R n) : ∀ᶠ n in atTop, R n := by
+  apply (hP.and (hQ.and hR)).mono
+  rintro n ⟨h, h', h''⟩
+  exact h'' ⟨h, h'⟩
+
+example (P Q R : ℕ → Prop) (hP : ∀ᶠ n in atTop, P n) (hQ : ∀ᶠ n in atTop, Q n)
+    (hR : ∀ᶠ n in atTop, P n ∧ Q n → R n) : ∀ᶠ n in atTop, R n := by
+  filter_upwards [hP, hQ, hR]
+  intro  n h h' h''
+  exact h'' ⟨h, h'⟩
+
+#check mem_closure_iff_clusterPt
+#check le_principal_iff
+#check neBot_of_le
