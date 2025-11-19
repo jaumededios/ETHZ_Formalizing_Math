@@ -62,6 +62,7 @@ example {X Y : Type*} [MetricSpace X] [MetricSpace Y] (f : X → Y) (a : X) :
     ContinuousAt f a ↔ ∀ ε > 0, ∃ δ > 0, ∀ {x}, dist x a < δ → dist (f x) (f a) < ε :=
   Metric.continuousAt_iff
 
+
 -- # Examples
 
 -- ## Composition of functions
@@ -71,28 +72,67 @@ example {X Y : Type*} [MetricSpace X] [MetricSpace Y] {f : X → Y} (hf : Contin
 
 #check Continuous.comp
 #check Continuous.prodMk
+
+#check continuous_dist
+#check continuous_snd
+#check continuous_fst
+
+
 example {X Y : Type*} [MetricSpace X] [MetricSpace Y] {f : X → Y} (hf : Continuous f) :
-    Continuous fun p : X × X ↦ dist (f p.1) (f p.2) := sorry
+    Continuous fun p : X × X ↦ dist (f p.1) (f p.2) := by
+    sorry
+
+
+
+
+
+example {X Y : Type*} [MetricSpace X] [MetricSpace Y] {f : X → Y} (hf : Continuous f) :
+    Continuous fun p : X × X ↦ dist (f p.1) (f p.2) :=
+    (Continuous.comp
+      continuous_dist
+        (Continuous.prodMk
+          (Continuous.comp hf continuous_fst)
+          (Continuous.comp hf continuous_snd)))
+
 
 #check Continuous.dist
-example {X Y : Type*} [MetricSpace X] [MetricSpace Y] {f : X → Y} (hf : Continuous f) :
-    Continuous fun p : X × X ↦ dist (f p.1) (f p.2) := by sorry
+#check Continuous.fst
+#check Continuous.snd'
 
-example {f : ℝ → X} (hf : Continuous f) : Continuous fun x : ℝ ↦ f (x ^ 2 + x) := by
-  apply Continuous.comp hf (Continuous.add (continuous_pow 2) continuous_id)
+example {X Y : Type*} [MetricSpace X] [MetricSpace Y] {f : X → Y} (hf : Continuous f) :
+    Continuous fun p : X × X ↦ dist (f p.1) (f p.2) := by
+    apply Continuous.dist (Continuous.fst' hf) (Continuous.snd' hf)
+
+example {f : ℝ → X} (hf : Continuous f) : Continuous fun x : ℝ ↦ f (x ^ 2 + x) := sorry
 
 
 -- ## Closed sets
 
+#check IsClosed
+#check closure
+
+example {s : Set X} : (a ∈ s) →  a ∈ (closure s) := by
+  sorry
+
+example {s : Set X} : IsClosed (closure s):= by
+  sorry
+
+
+#check Metric.mem_closure_iff
+#check Metric.tendsto_atTop
+
+example {u : ℕ → X} (hu : Tendsto u atTop (𝓝 a)) {s : Set X} (hs : ∀ n, u n ∈ s) :
+    a ∈ closure s := by
+    sorry
+
+
+
+-- Of course we could have used stuff from the library
+-- IsClosed.mem_of_tendsto
+
 example {s : Set X} (hs : IsClosed s) {u : ℕ → X} (hu : Tendsto u atTop (𝓝 a))
     (hus : ∀ n, u n ∈ s) : a ∈ s :=
   IsClosed.mem_of_tendsto hs hu (Eventually.of_forall hus)
-
-example {s : Set X} : a ∈ closure s ↔ ∀ ε > 0, ∃ b ∈ s, a ∈ Metric.ball b ε :=
-  Metric.mem_closure_iff
-
-example {u : ℕ → X} (hu : Tendsto u atTop (𝓝 a)) {s : Set X} (hs : ∀ n, u n ∈ s) :
-    a ∈ closure s := by sorry
 
 
 -- # Compactness
@@ -133,8 +173,6 @@ example
   {Y : Type*} [MetricSpace Y] {f : X → Y}
   (hf : Continuous f) : UniformContinuous f := by
   sorry
-
-
 
 -- ## Cauchy sequences
 

@@ -66,8 +66,22 @@ example {X Y : Type*} [MetricSpace X] [MetricSpace Y] (f : X → Y) (a : X) :
 
 -- ## Composition of functions
 
+
 example {X Y : Type*} [MetricSpace X] [MetricSpace Y] {f : X → Y} (hf : Continuous f) :
     Continuous fun p : X × X ↦ dist (f p.1) (f p.2) := by continuity
+
+
+example {X Y : Type*} [MetricSpace X] [MetricSpace Y] {f : X → Y} (hf : Continuous f) :
+    Continuous fun p : X × X ↦ dist (f p.1) (f p.2) := by
+    have :(fun p : X × X ↦ dist (f p.1) (f p.2)) = dist.uncurry ∘ (fun x: X × X ↦ (f x.1, f x.2))
+     :=  by tauto
+    rw [this]
+    apply Continuous.comp
+    · exact continuous_dist
+    · apply Continuous.prodMk
+      · apply Continuous.comp hf continuous_fst
+      · apply Continuous.comp hf continuous_snd
+
 
 example {X Y : Type*} [MetricSpace X] [MetricSpace Y] {f : X → Y} (hf : Continuous f) :
     Continuous fun p : X × X ↦ dist (f p.1) (f p.2) :=
@@ -78,6 +92,9 @@ example {X Y : Type*} [MetricSpace X] [MetricSpace Y] {f : X → Y} (hf : Contin
   apply Continuous.dist
   · exact hf.comp continuous_fst
   · exact hf.comp continuous_snd
+
+
+
 
 example {X Y : Type*} [MetricSpace X] [MetricSpace Y] {f : X → Y} (hf : Continuous f) :
     Continuous fun p : X × X ↦ dist (f p.1) (f p.2) :=
@@ -93,22 +110,41 @@ example {f : ℝ → X} (hf : Continuous f) : Continuous fun x : ℝ ↦ f (x ^ 
 
 -- ## Closed sets
 
-example {s : Set X} (hs : IsClosed s) {u : ℕ → X} (hu : Tendsto u atTop (𝓝 a))
-    (hus : ∀ n, u n ∈ s) : a ∈ s :=
-  IsClosed.mem_of_tendsto hs hu (Eventually.of_forall hus)
+#check IsClosed
+#check closure
 
-example {s : Set X} : a ∈ closure s ↔ ∀ ε > 0, ∃ b ∈ s, a ∈ Metric.ball b ε :=
-  Metric.mem_closure_iff
+example {s : Set X} : (a ∈ s) →  a ∈ (closure s) := by
+  intro ha;
+  unfold closure; simp;
+  tauto
+
+example {s : Set X} : IsClosed (closure s):= by
+  unfold closure;
+  refine isClosed_sInter ?_;
+  intro t ⟨h1,h2⟩; exact h1
+
+
+#check Metric.mem_closure_iff
+#check Metric.tendsto_atTop
 
 example {u : ℕ → X} (hu : Tendsto u atTop (𝓝 a)) {s : Set X} (hs : ∀ n, u n ∈ s) :
     a ∈ closure s := by
-  rw [Metric.tendsto_atTop] at hu
-  rw [Metric.mem_closure_iff]
-  intro ε hε
-  rcases hu ε hε with ⟨N, hN⟩
-  use (u N), (hs N)
-  rw [dist_comm]
-  exact (hN N (Nat.le_refl N))
+    rw [Metric.mem_closure_iff]
+    rw [Metric.tendsto_atTop] at hu
+    intro ε hε
+    rcases hu ε hε with ⟨N, hN⟩
+    use (u N), (hs N)
+    rw[dist_comm]
+    use (hN N (by tauto))
+
+
+
+-- Of course we could have used stuff from the library
+-- IsClosed.mem_of_tendsto
+
+example {s : Set X} (hs : IsClosed s) {u : ℕ → X} (hu : Tendsto u atTop (𝓝 a))
+    (hus : ∀ n, u n ∈ s) : a ∈ s :=
+  IsClosed.mem_of_tendsto hs hu (Eventually.of_forall hus)
 
 
 -- # Compactness
@@ -126,16 +162,68 @@ example {s : Set X} (hs : IsCompact s) (hs' : s.Nonempty) {f : X → ℝ}
     ∃ x ∈ s, ∀ y ∈ s, f x ≤ f y :=
   hs.exists_isMinOn hs' hfs
 
-example {s : Set X} (hs : IsCompact s) (hs' : s.Nonempty) {f : X → ℝ}
-      (hfs : ContinuousOn f s) :
-    ∃ x ∈ s, ∀ y ∈ s, f y ≤ f x :=
-  hs.exists_isMaxOn hs' hfs
-
 example {s : Set X} (hs : IsCompact s) : IsClosed s :=
   hs.isClosed
 
 example {X : Type*} [MetricSpace X] [CompactSpace X] : IsCompact (univ : Set X) :=
   isCompact_univ
+
+-- ## Uniform continuity
+example {X : Type*} [MetricSpace X] {Y : Type*} [MetricSpace Y] {f : X → Y} :
+    UniformContinuous f ↔
+      ∀ ε > 0, ∃ δ > 0, ∀ {a b : X}, dist a b < δ → dist (f a) (f b) < ε :=
+  Metric.uniformContinuous_iff
+
+
+#check eq_empty_or_nonempty
+#check isClosed_le
+#check IsClosed.isCompact
+#check  IsCompact.exists_isMinOn
+
+example
+  {X : Type*} [MetricSpace X] [CompactSpace X]
+  {Y : Type*} [MetricSpace Y] {f : X → Y}
+  (hf : Continuous f) : UniformContinuous f := by
+  rw [Metric.uniformContinuous_iff]
+  intro ε ε_pos
+  let φ : X × X → ℝ := fun p ↦ dist (f p.1) (f p.2)
+  have φ_cont : Continuous φ := hf.fst'.dist hf.snd'
+  let K := { p : X × X | ε ≤ φ p }
+  have K_closed : IsClosed K := isClosed_le continuous_const φ_cont
+  have K_cpct : IsCompact K := K_closed.isCompact
+  rcases eq_empty_or_nonempty K with hK | hK
+  · use 1, by norm_num
+    intro x y _
+    have : (x, y) ∉ K := by simp [hK]
+    exact lt_of_not_ge this
+  · rcases K_cpct.exists_isMinOn hK continuous_dist.continuousOn with ⟨⟨x₀, x₁⟩, xx_in, H⟩
+    use dist x₀ x₁
+    constructor
+    · have : dist (f x₀) (f x₁) ≥ ε := by simp_all only [gt_iff_lt, mem_setOf_eq, ge_iff_le, φ, K]
+      have : (f x₀) ≠ (f x₁) := by intro eqf; apply dist_eq_zero.mpr at eqf; grind
+      have : x₀ ≠ x₁ := by exact fun a ↦ this (congrArg f a)
+      exact dist_pos.mpr this
+    · intro x x'
+      contrapose!
+      intro hyp
+      have : (x,x')∈ K := by simp_all only [gt_iff_lt, mem_setOf_eq, φ, K]
+      exact H this
+
+
+
+-- ## Cauchy sequences
+
+example (u : ℕ → X) :
+    CauchySeq u ↔ ∀ ε > 0, ∃ N : ℕ, ∀ m ≥ N, ∀ n ≥ N, dist (u m) (u n) < ε :=
+  Metric.cauchySeq_iff
+
+example (u : ℕ → X) :
+    CauchySeq u ↔ ∀ ε > 0, ∃ N : ℕ, ∀ n ≥ N, dist (u n) (u N) < ε :=
+  Metric.cauchySeq_iff'
+
+example [CompleteSpace X] (u : ℕ → X) (hu : CauchySeq u) :
+    ∃ x, Tendsto u atTop (𝓝 x) :=
+  cauchySeq_tendsto_of_complete hu
 
 -- ## Uniform continuity
 example {X : Type*} [MetricSpace X] {Y : Type*} [MetricSpace Y] {f : X → Y} :

@@ -32,11 +32,25 @@ example {α : Type*} (s : Set α) : Filter α := 𝓟 s
 example : Filter ℕ := atTop
 
 -- This is not the definition of atTop but to get some intuition
+-- if Inhabited, we have "default"
 def atTop' {α : Type*} [Inhabited α] [Lattice α] : Filter α where
   sets := {p |  ∃ lb , ∀ a:α,  lb≤a → a ∈ p}
-  univ_sets := sorry
-  sets_of_superset := sorry
-  inter_sets := sorry
+  univ_sets := by use default; intro a ha; exact trivial
+  sets_of_superset := by
+    intro x y hx xley
+    rcases hx with ⟨lb,hlb⟩
+    use lb
+    intro a ha
+    exact xley (hlb a ha)
+  inter_sets := by
+    intro x y hx hy
+    rcases hx with ⟨lx,hlx⟩
+    rcases hy with ⟨ly,hly⟩
+    use lx ⊔ ly
+    intro a ha
+    exact ⟨hlx a (sup_le_iff.mp ha).1, hly a (sup_le_iff.mp ha).2⟩
+
+
 
 
 -- The Neighborhood Filter (\MCN \nhds)
@@ -64,7 +78,17 @@ variable (α β : Type*) (fa fa' : Filter α)
 -- The forward map of a filter
 #check Filter.map
 
-def map' (m : α → β) (f : Filter α) : Filter β  := _
+def map' (m : α → β) (f : Filter α) : Filter β where
+  sets := preimage (preimage m) f.sets
+  univ_sets := by use Filter.univ_mem
+  sets_of_superset := by
+    intro x y hx hy;
+    use Filter.sets_of_superset f hx ?_
+    gcongr
+  inter_sets := by
+    intro x y hx hy;
+    use Filter.inter_sets f hx hy
+
 
 -- Filters have a Partial order
 #synth PartialOrder (Filter α)
@@ -84,8 +108,11 @@ example {X Y : Type*} (f : X → Y) (F : Filter X) (G : Filter Y) :
     ∀ {α β γ} {f : Filter α} {m : α → β} {m' : β → γ}, map m' (map m f) = map (m' ∘ m) f)
 
 example {X Y Z : Type*} {F : Filter X} {G : Filter Y} {H : Filter Z} {f : X → Y} {g : Y → Z}
-    (hf : Tendsto₁ f F G) (hg : Tendsto₁ g G H) : Tendsto₁ (g ∘ f) F H := sorry
-
+    (hf : Tendsto₁ f F G) (hg : Tendsto₁ g G H) : Tendsto₁ (g ∘ f) F H :=
+    calc
+    map (g∘ f) F = map g ( map f F) := by exact map_map
+               _ ≤ map g G := by exact map_mono hf
+               _ ≤ H := by exact hg
 -- # Filter operations
 
 -- ## Comaps of filters
@@ -117,22 +144,26 @@ example (comap_comap : comap m (comap n F) = comap (n ∘ m) F) := by tauto
 example : 𝓝 (x₀, y₀) = (𝓝 x₀) ×ˢ (𝓝 y₀) := nhds_prod_eq
 
 -- Let's try to construct the product
--- example : (𝓝 x₀) ×ˢ (𝓝 y₀) := sorry
+example : (𝓝 x₀) ×ˢ (𝓝 y₀) = (comap Prod.fst (𝓝 x₀)) ⊓ (comap Prod.snd (𝓝 y₀)):= rfl
 
 #check le_inf_iff
 
-
-
-
 example (f : ℕ → ℝ × ℝ) (x₀ y₀ : ℝ) :
     Tendsto f atTop (𝓝 (x₀, y₀)) ↔
-      Tendsto (Prod.fst ∘ f) atTop (𝓝 x₀) ∧ Tendsto (Prod.snd ∘ f) atTop (𝓝 y₀) := by sorry
-
+      Tendsto (Prod.fst ∘ f) atTop (𝓝 x₀) ∧ Tendsto (Prod.snd ∘ f) atTop (𝓝 y₀) := by
+      calc
+      Tendsto f atTop (𝓝 (x₀, y₀))
+         ↔ Tendsto f atTop ((𝓝 x₀) ×ˢ (𝓝 y₀)) := by rw[nhds_prod_eq]
+      _  ↔ Tendsto f atTop ((comap Prod.fst (𝓝 x₀)) ⊓ (comap Prod.snd (𝓝 y₀))) := by tauto
+      _  ↔ Tendsto f atTop (comap Prod.fst (𝓝 x₀)) ∧ Tendsto f atTop (comap Prod.snd (𝓝 y₀))
+        := by exact le_inf_iff
+      _  ↔ Tendsto (Prod.fst ∘ f) atTop (𝓝 x₀) ∧ Tendsto (Prod.snd ∘ f) atTop (𝓝 y₀)
+        := by simp only [tendsto_comap_iff]
 -- # Basis of Filters
 
 #check HasBasis
 
--- Open sets containing x₀ are a basis of 𝓝 x₀
+-- Open symmetric intervals containing x₀ are a basis of 𝓝 x₀
 example (x₀ : ℝ) : HasBasis (𝓝 x₀) (fun ε : ℝ ↦ 0 < ε) (fun ε ↦ Ioo  (x₀ - ε) (x₀ + ε)) :=
   nhds_basis_Ioo_pos x₀
 example : HasBasis atTop (fun _ : ℕ ↦ True) Ici := atTop_basis
@@ -140,11 +171,12 @@ example : HasBasis atTop (fun _ : ℕ ↦ True) Ici := atTop_basis
 -- TendsTo (and inequalities of filters in general) can be turned into inequalities of basis
 #check HasBasis.tendsto_iff
 
-
+#check HasBasis.tendsto_iff
 -- Now we can write some "Not nonsense" mathematics
 example (u : ℕ → ℝ) (x₀ : ℝ) :
     Tendsto u atTop (𝓝 x₀) ↔ ∀ ε > 0, ∃ N, ∀ n ≥ N, u n ∈ Ioo (x₀ - ε) (x₀ + ε) := by
-  sorry
+  rw[HasBasis.tendsto_iff  (atTop_basis) (nhds_basis_Ioo_pos x₀)]
+  simp
 
 -- # Eventually
 
